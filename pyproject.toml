@@ -8,8 +8,8 @@ build-backend = "hatchling.build"
 packages=["src/handymatt_media"]
 
 [project]
-name = "handymatt.media"
-version = "0.0.1"
+name = "handymatt_media"
+version = "0.0.3"
 authors = [{ name="Matt Stirling", email="stirlingmattmarkus@gmail.com" }]
 description = "A collection of custom media analysis/generation libraries for my personal use."
 readme = "README.md"
@@ -23,6 +23,7 @@ dependencies = [
     "pillow>=11.1.0",
     "opencv-python>=4.9.0.80",
     "nudenet>=3.0.8",
+    "piexif>=1.1.3",
 ]
 
 [project.scripts]

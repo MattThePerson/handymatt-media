@@ -1,4 +1,4 @@
-# Custom Libraries - MattThePerson
+# handymatt-media
 
 A collection of custom media analysis/generation libraries that I use in many of my Python projects!
 
