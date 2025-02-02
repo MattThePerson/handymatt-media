@@ -1,0 +1,33 @@
+[build-system]
+requires = [
+    "hatchling"
+]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages=["src/handymatt_media"]
+
+[project]
+name = "handymatt-media"
+version = "0.0.0"
+authors = [{ name="Matt Stirling", email="stirlingmattmarkus@gmail.com" }]
+description = "A collection of custom media analysis/generation libraries for my personal use."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy>=1.26.4",
+    "pillow>=11.1.0",
+    "opencv-python>=4.9.0.80",
+    "nudenet>=3.0.8",
+]
+
+[project.scripts]
+# ascii-monet = "ascii_monet.cli:main" # example script
+
+[project.urls]
+Homepage = "https://github.com/MattThePerson/handymatt-media"
+Changelog = "https://github.com/MattThePerson/handymatt-media/blob/main/CHANGELOG.md"
