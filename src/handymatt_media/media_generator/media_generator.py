@@ -196,7 +196,3 @@ def extractPreviewThumbs(video_path: str, target_dir: str, amount=5, resolution:
     print('Done. Took {:.4f}s'.format((time.time()-start)))
     return image_paths
 
-
-
-if __name__ == '__main__':
-    ...
