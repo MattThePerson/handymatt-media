@@ -1,6 +1,9 @@
+from typing import Any
 import cv2
 import imagehash
+import hashlib
 from PIL import Image
+import subprocess
 import numpy as np
 
 
@@ -24,8 +27,41 @@ def getVideoHash_Old(video_path):
     return _myHashFunction(string)
 
 
+## NEW HASH USING FFMPEF
+
+def getVideoHash_ffmpeg(video_path: str) -> str:
+    """ Get video hash based on byte chunks etracted from video stream using ffmpeg. Outputted hash is 12 digit hex string """
+    video_data = extract_video_bytes(str(video_path), [10.0], 20)
+    video_hash = hashlib.sha256(video_data).hexdigest()[:12]
+    return video_hash
+
+
+def extract_video_bytes(video_path: str, timestamps, duration: float=20):
+    """ Extract raw bytes of given duration at timestams from a video """
+    extracted_bytes = []
+    for ts in timestamps:
+        cmd = [
+            "ffmpeg",
+            "-i", video_path,
+            "-c:v", "copy",    # No transcoding, copy raw video stream
+            "-map", "0:v:0",   # Extract only the video stream
+            "-ss", str(ts),
+            "-t", str(duration),
+            "-f", "rawvideo",  # Output raw video data
+            "pipe:1"           # Output to stdout
+        ]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        extracted_bytes.append(result.stdout)
+    return b"".join(extracted_bytes)
+
+## END HASH
+
+
 # v1
-def getVideoHash(filepath, start_percs=[0.05, 0.5, 0.85], num_frames=3, quiet=True, show_string=False):
+# NOTE:
+# - from testing, changing params to start_percs=[0] & num_frames=14 hash time went from  ~712ms -> ~250ms
+def getVideoHash(filepath, start_percs=[0.05, 0.5, 0.85], num_frames=3, quiet=True, show_string=False) -> str|None:
+# def getVideoHash_OpenCV(filepath, start_percs=[0.2], num_frames=10, quiet=True, show_string=False):
     if not quiet: print('opening')
     cap = cv2.VideoCapture(filepath)
     if not cap.isOpened():
@@ -45,16 +81,16 @@ def getVideoHash(filepath, start_percs=[0.05, 0.5, 0.85], num_frames=3, quiet=Tr
         if not succ:
             print('\nUnable to set cap to {} of video for:\n  "{}"'.format(start_perc, filepath))
             cap.release()
-            return -1
+            return None
 
         # Read 'num_frames' sequentially
         for _ in range(num_frames):
             if not quiet: print('  reading frame ...')
             ret, frame = cap.read()
             if not ret:
-                print('\nUnable to read frame for')
+                print('\nUnable to read frame {}+x for "{}"'.format(start_frame, filepath))
                 cap.release()
-                return -1
+                return None
             if not quiet: print('    hashing')
             frame_hashes.append(hash_frame(frame))
     
@@ -116,7 +152,7 @@ def _myHashFunction(string):
 
 
 # 
-def getVideoData(filepath):
+def getVideoData(filepath: str) -> dict[str, Any]:
     import subprocess
     import datetime
     import os
@@ -130,7 +166,7 @@ def getVideoData(filepath):
     bitrate = int(filesize_mb * 8 * 1024 / duration_sec)
     height = int(float(subprocess.run(height_command.split(" ") + [filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout))
     fps = str(subprocess.run(fps_command.split(" ") + [filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout)
-    fps = fps[2:-5]
+    fps = fps.replace('\\n\'', '')[2:]
     parts = fps.split("/")
     if len(parts) == 2:
         fps_int = int(round(float(parts[0]) / float(parts[1]), 0))
