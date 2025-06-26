@@ -4,7 +4,11 @@ import imagehash
 import hashlib
 from PIL import Image
 import subprocess
-import numpy as np
+import subprocess
+import datetime
+import os
+# import numpy as np
+
 
 
 # v2
@@ -29,11 +33,43 @@ def getVideoHash_Old(video_path):
 
 ## NEW HASH USING FFMPEF
 
+
+def getVideoHash_openCV(video_path: str, start_frame: int=50, num_frames: int=5) -> str:
+    """ Get video hash using open cv """
+    cap = cv2.VideoCapture(video_path)
+    bytes_list = []
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+    for _ in range(num_frames):
+        ret, frame = cap.read()
+        if not ret:
+            break
+        bytes_list.append(frame.tobytes())
+    cap.release()
+    if not bytes_list:
+        return "000000000000"
+    combined = b"".join(bytes_list)
+    sha256_hash = hashlib.sha256(combined)
+    return sha256_hash.hexdigest()[:12] # convert to hex and return first 12 digits
+
+
+# def getVideoHash_ffmpegPython(video_path: str, timestamp: float=10.0, duration: float=20.0) -> str:
+#     """ Get video hash using ffmpeg-python to extract raw frame bytes. """
+#     import ffmpeg
+#     out, _ = (
+#         ffmpeg
+#         .input(video_path, ss=timestamp, t=duration)
+#         .output('pipe:', format='rawvideo', pix_fmt='rgb24')
+#         .run(capture_stdout=True, capture_stderr=True)
+#     )
+#     sha256_hash = hashlib.sha256(out)
+#     return sha256_hash.hexdigest()[:12] # convert to hex and return first 12 digits
+
+
 def getVideoHash_ffmpeg(video_path: str) -> str:
     """ Get video hash based on byte chunks etracted from video stream using ffmpeg. Outputted hash is 12 digit hex string """
     video_data = extract_video_bytes(str(video_path), [10.0], 20)
-    video_hash = hashlib.sha256(video_data).hexdigest()[:12]
-    return video_hash
+    sha256_hash = hashlib.sha256(video_data)
+    return sha256_hash.hexdigest()[:12] # convert to hex and return first 12 digits
 
 
 def extract_video_bytes(video_path: str, timestamps, duration: float=20):
@@ -153,9 +189,6 @@ def _myHashFunction(string):
 
 # 
 def getVideoData(filepath: str) -> dict[str, Any]:
-    import subprocess
-    import datetime
-    import os
     duration_command = "ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1"
     height_command = "ffprobe -v error -select_streams v:0 -show_entries stream=height -of default=nw=1:nk=1"
     fps_command = "ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate"
@@ -165,13 +198,8 @@ def getVideoData(filepath: str) -> dict[str, Any]:
     filesize_mb = round(os.stat(filepath).st_size / (1024 * 1024), 3)
     bitrate = int(filesize_mb * 8 * 1024 / duration_sec)
     height = int(float(subprocess.run(height_command.split(" ") + [filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout))
-    fps = str(subprocess.run(fps_command.split(" ") + [filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout)
-    fps = fps.replace('\\n\'', '')[2:]
-    parts = fps.split("/")
-    if len(parts) == 2:
-        fps_int = int(round(float(parts[0]) / float(parts[1]), 0))
-    else:
-        fps_int = int(parts[0])
+    fps_stdout = subprocess.run(fps_command.split(" ") + [filepath], stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
+    fps_int = _get_fps_from_ffprobe_fps_stdout(fps_stdout)
     return {
         "duration" : duration,
         "duration_seconds" : duration_sec,
@@ -181,6 +209,16 @@ def getVideoData(filepath: str) -> dict[str, Any]:
         "fps" : fps_int
     }
 
+def _get_fps_from_ffprobe_fps_stdout(_input) -> int:
+    """ converts fps stdout from format: `b'30/1\\r\\n'` to integer: int(30/1) """
+    string = str(_input) # convert to str
+    string = string.replace(r"\r\n'", '') # replace windows EOL + `'`
+    string = string.replace(r"\n'", '') # replace linux EOL + `'`
+    parts = string[2:].split("/") # 
+    if len(parts) == 2:
+        return int(round(float(parts[0]) / float(parts[1]), 0))
+    else:
+        return int(parts[0])
 
 
 # Command Line Interface

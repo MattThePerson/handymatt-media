@@ -5,3 +5,8 @@
 
 ## 0.2.0
 - added generateSeekThumbnails()
+
+## 0.3.0
+- added getVideoHash_openCV()  (faster, especially on Windows)
+
+
