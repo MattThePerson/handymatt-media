@@ -17,7 +17,7 @@ from .lib.stills import extract_stills_from_video, addDetectionsToImage, get_det
 def generateVideoTeaser(input_path, output_dir, savename, abs_amount_mode=False, n=10, jump=300, clip_len=1.3, start_perc=5, end_perc=95, keep_clips=False, skip=1, smallSize=False, quit=True):
     if not os.path.exists(input_path):
         print("ERROR: Path doesn't exist [{}]".format(input_path))
-        return None
+        return "NULL_PATH"
     savepath = os.path.join( output_dir, savename )
     smallRes = "640:360"
     print("Generating preview for video:", input_path)
@@ -50,7 +50,7 @@ def generateVideoTeaser(input_path, output_dir, savename, abs_amount_mode=False,
         # -v quiet -stats
     print()
     print("Concatenating {} clips ...".format(len(tempnames)))
-    savepath = _concatClips(savepath, savename, tempnames)
+    savepath = _concatClips(savepath, tempnames)
     if not keep_clips:
         for clip in tempnames:
             os.remove(clip)
@@ -59,24 +59,21 @@ def generateVideoTeaser(input_path, output_dir, savename, abs_amount_mode=False,
 
 
 
-def _concatClips(savepath, savename, clips):
-    clips_command = []
-    filter_start = '-filter_complex "'
+def _concatClips(savepath: str, clips: list[str]) -> str:
+    command = [ 'ffmpeg' ]
+    filter_command = ''
     for i, clip in enumerate(clips):
-        clips_command.append("-i")
-        clips_command.append(clip)
-        filter_start = filter_start + f" [{i}:v]"
-    filter_end = ' concat=n={}:v=1 [v]"'.format(len(clips))
-    filter_command = filter_start + filter_end
-    end = '-map "[v]" -y'
-    #     filter_start = filter_start + f" [{i}:v] [{i}:a]"
-    # filter_end = ' concat=n={}:v=1:a=1 [v] [a]"'.format(len(clips))
-    # filter_command = filter_start + filter_end
-    # end = '-map "[v]" -map "[a]" -y'
-    command = ["ffmpeg"] + clips_command + _getCommandTerms(filter_command) + _getCommandTerms(end) + [savepath]
-    print('running command [{}]'.format(command))
+        command.extend(["-i", clip]) # add clips to command
+        filter_command += f" [{i}:v]"
+    filter_command += f'concat=n={len(clips)}:v=1 [v]'
+    command.extend([
+        '-filter_complex', filter_command, # filter
+        '-map', '[v]',
+        '-v', 'quiet', '-stats',
+        savepath, '-y',
+    ])
+    # print('running command [{}]'.format(command))
     _ = subprocess.run(command)
-    # -v quiet -stats
     return savepath
 
 
