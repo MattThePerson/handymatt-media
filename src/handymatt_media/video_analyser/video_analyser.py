@@ -34,10 +34,12 @@ def getVideoHash_Old(video_path):
 ## NEW HASH USING FFMPEF
 
 
-def getVideoHash_openCV(video_path: str, start_frame: int=50, num_frames: int=5) -> str:
+def getVideoHash_openCV(video_path: str, start_perc: float=0.2, num_frames: int=5) -> str:
     """ Get video hash using open cv """
     cap = cv2.VideoCapture(video_path)
     bytes_list = []
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    start_frame = int(start_perc * frame_count)
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
     for _ in range(num_frames):
         ret, frame = cap.read()
@@ -46,7 +48,7 @@ def getVideoHash_openCV(video_path: str, start_frame: int=50, num_frames: int=5)
         bytes_list.append(frame.tobytes())
     cap.release()
     if not bytes_list:
-        return "000000000000"
+        raise Exception('No bytes read from video:', video_path)
     combined = b"".join(bytes_list)
     sha256_hash = hashlib.sha256(combined)
     return sha256_hash.hexdigest()[:12] # convert to hex and return first 12 digits
