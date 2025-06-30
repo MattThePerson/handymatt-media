@@ -17,7 +17,7 @@ from .lib.stills import extract_stills_from_video, addDetectionsToImage, get_det
 def generateVideoTeaser(input_path, output_dir, savename, abs_amount_mode=False, n=10, jump=300, clip_len=1.3, start_perc=5, end_perc=95, keep_clips=False, skip=1, smallSize=False, quit=True):
     if not os.path.exists(input_path):
         print("ERROR: Path doesn't exist [{}]".format(input_path))
-        return "NULL_PATH"
+        return ""
     savepath = os.path.join( output_dir, savename )
     smallRes = "640:360"
     print("Generating preview for video:", input_path)
@@ -41,13 +41,25 @@ def generateVideoTeaser(input_path, output_dir, savename, abs_amount_mode=False,
     for i, time in enumerate(times):
         print("\rGenerating clip ({}/{}) at time [{}]".format(i+1, len(times), time), end='')
         tempname = os.path.join( output_dir, f'temp_{i+1}.mp4' )
-        command = f'ffmpeg -ss {time} -i "{input_path}" -t 00:00:{clip_len} -y -map 0:0 -map 0:1? -c:v libx264 -v quiet -stats'
+        command = [
+            'ffmpeg', '-ss', time,
+            '-i', input_path,
+            '-t', f'00:00:{clip_len}',
+            '-map', '0:v:0', '-an',
+            '-c:v', 'libx264',
+            '-v', 'error'
+            #, '-stats',
+        ]
         if smallSize:
-            command += f' -vf scale={smallRes}'
-        command += f' "{tempname}"'
-        subprocess.run(shlex.split(command))
+            command.extend([
+                '-vf', f'scale={smallRes}'
+            ])
+        command.extend([
+            tempname, '-y',
+        ])
+        # print(' '.join(command))
+        subprocess.run(command)
         tempnames.append(tempname)
-        # -v quiet -stats
     print()
     print("Concatenating {} clips ...".format(len(tempnames)))
     savepath = _concatClips(savepath, tempnames)
@@ -69,7 +81,7 @@ def _concatClips(savepath: str, clips: list[str]) -> str:
     command.extend([
         '-filter_complex', filter_command, # filter
         '-map', '[v]',
-        '-v', 'quiet', '-stats',
+        '-v', 'error', '-stats',
         savepath, '-y',
     ])
     # print('running command [{}]'.format(command))
