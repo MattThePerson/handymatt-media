@@ -9,7 +9,7 @@ packages=["src/handymatt_media"]
 
 [project]
 name = "handymatt_media"
-version = "0.3.2"
+version = "0.3.3"
 authors = [{ name="Matt Stirling", email="stirlingmattmarkus@gmail.com" }]
 description = "A collection of custom media analysis/generation libraries for my personal use."
 readme = "README.md"

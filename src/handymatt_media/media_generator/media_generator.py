@@ -288,14 +288,7 @@ def generateSeekThumbnails(video_path: str, output_dir: str, filename: str='seek
     # Release video capture
     cap.release()
     
-    return {
-        'spritesheet': spritesheet_path,
-        'vtt': vtt_path,
-        'thumb_width': thumb_width,
-        'thumb_height': thumb_height,
-        'cols': cols,
-        'rows': rows
-    }
+    return spritesheet_path, vtt_path
 
 
 def _format_time(seconds: float) -> str:
