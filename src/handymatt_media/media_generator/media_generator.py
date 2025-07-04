@@ -239,7 +239,7 @@ def generateSeekThumbnails(video_path: str, output_dir: str, filename: str='seek
     thumb_width = int(thumb_height * aspect_ratio)
     
     # Calculate the step between frames to get n evenly spaced frames
-    step = max(1, frame_count // n)
+    step = max(1, frame_count // (n+1))
     
     # Determine optimal grid layout for spritesheet (aim for roughly square)
     cols = int(math.ceil(math.sqrt(n)))
@@ -257,7 +257,7 @@ def generateSeekThumbnails(video_path: str, output_dir: str, filename: str='seek
     for i in range(n):
         print('\rextracting frame {}/{}'.format(i+1, n), end='')
         # Calculate frame position and timestamp
-        frame_pos = min(i * step, frame_count - 1)
+        frame_pos = min((i+1) * step, frame_count - 1)
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_pos)
         ret, frame = cap.read()
         if not ret:
