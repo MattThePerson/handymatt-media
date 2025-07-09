@@ -51,38 +51,39 @@ def getHistogram(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     return np.histogram(gray, bins=50, range=(0, 255))[0]
 
-def getHistogramSimilarity(hist1, hist2):
+def getHistogramRMSDiff(hist1, hist2):
     return float(np.mean( ( hist1 - hist2 ) ** 2 ) / 1000000)
 
-# image_items : (image, imagepath, score)
-def floodingMethod(image_items, stills_amount=10) -> list:
-    if image_items == []:
-        return []
+
+def floodingMethod(image_items: list[dict], stills_amount:int=10) -> list[dict]:
     if len(image_items) <= stills_amount:
         return image_items
-    stills_items, buffered_items = [], []
-    handle_items = [ (item, getHistogram(item['image'])) for item in image_items ]
-    sim_thresh = 500
-    handle_items.sort(reverse=True, key = lambda item: item[0]['score'])
-    while len(stills_items) < stills_amount:
-        top = handle_items.pop(0)
-        _, hist = top
-        min_sim = 1000000000
-        for _, hist_cmp in stills_items:
-            sim = getHistogramSimilarity(hist, hist_cmp)
-            if sim < min_sim:
-                min_sim = sim
-        # min_sim = min((getHistogramSimilarity(hist, hist_cmp) for _, hist_cmp in stills_items))
-        if min_sim >= sim_thresh:
-            stills_items.append(top)
+    # print('FLOODING METHOD:')
+    # print('amount of items:', len(image_items))
+    selected_items, buffered_items = [], []
+    queue = [ (item, getHistogram(item['image'])) for item in image_items ]
+    queue.sort(reverse=True, key = lambda item: item[0]['score'])
+    difference_thresh = 500.0
+    min_score = 0.2
+    while len(selected_items) < stills_amount:
+        top_tuple = queue.pop(0)
+        hist = top_tuple[1]
+        min_diff = min((getHistogramRMSDiff(hist, hist_cmp) for _, hist_cmp in selected_items), default=float('inf'))
+        if min_diff >= difference_thresh and top_tuple[0]['score'] >= min_score:
+            selected_items.append(top_tuple)
+            # print('{:>2} ADDED   ({:>3})  {:.1f}  score={:.1f}'.format(len(selected_items), difference_thresh, min_diff, top_tuple[0]['score']))
         else:
-            buffered_items.append(top)
-        if handle_items == []:
-            handle_items = buffered_items.copy()
+            buffered_items.append(top_tuple)
+            # print('skipping    ({:>3})  {:>}'.format(difference_thresh, min_diff))
+        if queue == []:
+            queue = buffered_items.copy()
             buffered_items = []
-            sim_thresh *= 0.5
-    image_items = [ item for item, _ in stills_items ]
+            difference_thresh *= 0.5
+            min_score *= 0.5
+            # print('lowered diff thresh:', difference_thresh)
+    image_items = [ item for item, _ in selected_items ]
     image_items.sort(reverse=True, key=lambda item: item['score'])
+    # print()
     return image_items
 
 

@@ -14,7 +14,7 @@ from .lib.stills import extract_stills_from_video, addDetectionsToImage, get_det
 
 
 # GENERATE VIDEO TEASER
-def generateVideoTeaser(input_path, output_dir, savename, abs_amount_mode=False, n=10, jump=300, clip_len=1.3, start_perc=5, end_perc=95, keep_clips=False, skip=1, smallSize=False, quit=True):
+def generateVideoTeaser(input_path, output_dir, savename, abs_amount_mode=False, n=10, jump=300, clip_len=1.3, start_perc=5, end_perc=95, keep_clips=False, skip=1, smallSize=False, quit=True) -> str:
     if not os.path.exists(input_path):
         print("ERROR: Path doesn't exist [{}]".format(input_path))
         return ""
@@ -58,7 +58,16 @@ def generateVideoTeaser(input_path, output_dir, savename, abs_amount_mode=False,
             tempname, '-y',
         ])
         # print(' '.join(command))
-        subprocess.run(command)
+        result = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        if result.returncode != 0:
+            raise RuntimeError("FFmpeg returncode = {} while processing video \"{}\"".format(result.returncode, input_path))
+        if "Error" in result.stderr or "Invalid" in result.stderr:
+            raise RuntimeError("FFmpeg returned 0 but has stderr for video \"{}\":\n{}".format(input_path, result.stderr[:1000]))
         tempnames.append(tempname)
     print()
     print("Concatenating {} clips ...".format(len(tempnames)))
@@ -153,8 +162,7 @@ def extractPreviewThumbs(video_path: str, target_dir: str, amount=5, resolution:
     if not isinstance(resolution, list):
         resolution = [resolution]
     if not os.path.exists(video_path):
-        print('Video path doesnt exist:', video_path)
-        exit()
+        raise FileNotFoundError('Video path doesnt exist:', video_path)
     temp_folder = os.path.join( target_dir, 'temp' )
     os.makedirs(temp_folder, exist_ok=True)
     temp_folder_contents = os.listdir(temp_folder)
@@ -192,11 +200,19 @@ def extractPreviewThumbs(video_path: str, target_dir: str, amount=5, resolution:
     
     image_items_flood = floodingMethod(image_items, stills_amount=5)
 
+    # delete previous preview thumbs (dont delete temp files)
+    from send2trash import send2trash
+    for filename in os.listdir(target_dir):
+        filepath = os.path.normpath( os.path.join(target_dir, filename) )
+        if os.path.isfile(filepath):
+            send2trash(filepath)
+
     # Save images
     image_paths = []
     for res in resolution:
         for i, item in enumerate(image_items_flood, start=1):
             savepath = os.path.join( target_dir, 'previewThumb_{}_{}_[{}].png'.format(res, i, int(item['score']*100)) )
+            # print('saving:', savepath)
             image_paths.append(savepath)
             ar = item['image'].shape[1] / item['image'].shape[0]
             img = cv2.resize(item['image'], (int(res*ar), res))

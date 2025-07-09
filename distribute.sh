@@ -1,4 +1,6 @@
-# Shell script I use for building and uploading to PyPi
+# Shell script for building and uploading to PyPi
+
+set -e
 
 # make sure packages are installed and up to date
 python3 -m pip install -U pip
