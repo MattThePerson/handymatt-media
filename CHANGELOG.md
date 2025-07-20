@@ -10,3 +10,5 @@
 - added getVideoHash_openCV()  (faster, especially on Windows)
 
 
+## 0.4.0
+- Refactored media_generator, split ffmpeg only generators into own file

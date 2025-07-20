@@ -1,4 +1,5 @@
 """ Functions for generating preview media for videos """
-from .media_generator import generateVideoTeaser, extractPreviewThumbs, generateSeekThumbnails
+from .media_generator import extractPreviewThumbs, generateVideoSpritesheet
+from .media_generator_ffmpeg import generateVideoTeaser, generateVideoSpritesheet_ffmpeg
 
-__all__ = ["generateVideoTeaser", "extractPreviewThumbs", "generateSeekThumbnails"]
+__all__ = ["generateVideoTeaser", "extractPreviewThumbs", "generateVideoSpritesheet", "generateVideoSpritesheet_ffmpeg"]
