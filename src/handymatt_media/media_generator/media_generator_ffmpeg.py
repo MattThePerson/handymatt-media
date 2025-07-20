@@ -120,16 +120,16 @@ def _concat_clips(savepath: str, clips: list[str]) -> int:
     return 0
 
 
-def _get_video_duration(input_path: str):
+def _get_video_duration(input_path: str) -> float:
     command = [
-        'ffmpep',
+        'ffprobe',
         '-v', 'error',
-        'show_entries', 'format=duration', '-of',
-        'default=noprint_wrappers=1:nokey=1',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
         input_path,
     ]
-    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    return int(float(result.stdout))
+    result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    return float(result.stdout.strip())
 
 
 #region - GEN SPRITESHEET ----------------------------------------------------------------------------------------------
