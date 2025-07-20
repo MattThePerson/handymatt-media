@@ -7,7 +7,7 @@ import numpy as np
 import cv2
 
 from .lib.stills import extract_stills_from_video, addDetectionsToImage, get_detections_score, floodingMethod
-
+from .lib.helpers import get_display_aspect_ratio
 
 
 #region - PREVIEW THUMBS -----------------------------------------------------------------------------------------------
@@ -118,9 +118,13 @@ def generateVideoSpritesheet(
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS)
     duration = frame_count / fps
-    video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    aspect_ratio = video_width / video_height
+    aspect_ratio = get_display_aspect_ratio(video_path)
+    # print('DAR:', aspect_ratio)
+    if aspect_ratio is None:
+        video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        aspect_ratio = video_width / video_height
+    # print('aspect_ratio:', aspect_ratio)
     
     # Calculate thumbnail dimensions maintaining aspect ratio
     thumb_height = height

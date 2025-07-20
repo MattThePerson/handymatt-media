@@ -12,3 +12,6 @@
 
 ## 0.4.0
 - Refactored media_generator, split ffmpeg only generators into own file
+
+## 0.4.1-0.4.4
+- Fixing bugs

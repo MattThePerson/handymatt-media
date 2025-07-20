@@ -3,47 +3,72 @@ import math
 import numpy as np
 import cv2
 
+from .helpers import get_display_aspect_ratio
 
 
 def showProgressBar(i, arrlen, barlen=50):
     bar = "#" * int((i+1) / arrlen * barlen) + "-" * int((arrlen-i-1) / arrlen * barlen)
     print("\r", "{} ({} / {})     ".format(bar, i+1, arrlen), flush=True, end='')
 
-def extract_stills_from_video(video, destination, fn_root='still', jump_frames=300, start_perc=0, end_perc=100, top_stillness=40, quiet=False):
+
+def extract_stills_from_video(video_path: str, destination: str, fn_root='still', jump_frames=300, start_perc=0, end_perc=100, top_stillness=40, quiet=False):
     if not quiet: print("Using jump of {} frames:".format(jump_frames))
-    stream = cv2.VideoCapture(video)
+
+    stream = cv2.VideoCapture(video_path)
+    
+    # Determine if display aspect ratio is different from raw aspect ratio
+    raw_w = int(stream.get(cv2.CAP_PROP_FRAME_WIDTH))
+    raw_h = int(stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    SAR = raw_w / raw_h
+    DAR = get_display_aspect_ratio(video_path)
+    incorrect_raw_aspect = (abs(DAR - SAR) > 0.01) if DAR else False
+    
+    # determine frame variables
     number_of_frames = int(stream.get(cv2.CAP_PROP_FRAME_COUNT))
-    stills = [] # item: (path, stillness_score, sharpness_score)
     frame_start = int(number_of_frames * start_perc/100)
     frame_end = int(number_of_frames * end_perc/100)
     frame_n = frame_start
+
+    stills = [] # item: (path, stillness_score, sharpness_score)
     while True:
         frame_n += jump_frames
         if not quiet: showProgressBar(frame_n-frame_start, frame_end-frame_start)
         if frame_n > frame_end:
             print('Reached end frame {} ({}%)'.format(frame_end, end_perc))
             break
+        
+        # get frame
         stream.set(1, frame_n)
         hasFrames, frame = stream.read()
         nextHasFrames, nextFrame = stream.read()
         if hasFrames == False or nextHasFrames == False:
             break
-        stillness = np.mean((frame - nextFrame) ** 2)
-        sharpness = np.mean(cv2.Canny(frame, 50, 250)) * 10
-        if sharpness > 2:
-            savepath = r"{}\{}_{}_{}_{}.jpg".format(destination, fn_root, (5-len(str(frame_n))) * "0" + str(frame_n), int(round(stillness,0)), int(round(sharpness,0)))
-            stills.append( (savepath, stillness, sharpness) )
-            cv2.imwrite(savepath, frame)
-    # if not quiet: print("Saved temp frames. Deleting shaky frames.")
-    stills.sort(key=lambda item: item[1])
+        stillness = np.mean((frame - nextFrame) ** 2)       # type: ignore
+        sharpness = np.mean(cv2.Canny(frame, 50, 250)) * 10 # type: ignore
+        if sharpness < 2:
+            continue
+
+        # save frame
+        savepath = r"{}\{}_{}_{}_{}.jpg".format(destination, fn_root, (5-len(str(frame_n))) * "0" + str(frame_n), int(round(stillness,0)), int(round(sharpness,0)))
+        if incorrect_raw_aspect and DAR:
+            new_w = int(DAR * raw_h)
+            frame = cv2.resize(frame, (new_w, raw_h))
+        cv2.imwrite(savepath, frame)
+        stills.append( (savepath, stillness, sharpness) )
+    
+    # filter stills
+    stills.sort(key=lambda item: item[1]) # sort by stillness
     stills = stills[:int(len(stills)*top_stillness/100)]
-    stills.sort(key=lambda item: item[2])
+    stills.sort(key=lambda item: item[2]) # sort by sharpness
     stills = stills[:int(len(stills)*85/100)]
-    videopaths = [path for path, _, _ in stills]
+    
+    # remove temppaths
+    videopaths = [ path for path, _, _ in stills ]
     for temp in os.listdir(destination):
         temppath = r"{}\{}".format(destination, temp)
         if temppath not in videopaths:
             os.remove(temppath)
+    
     return stills
 
 # flooding functions
