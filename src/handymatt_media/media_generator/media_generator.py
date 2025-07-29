@@ -1,13 +1,9 @@
 import os
 import time
 import shutil
-import math
-import numpy as np
-
 import cv2
 
 from .lib.stills import extract_stills_from_video, addDetectionsToImage, get_detections_score, floodingMethod
-from .lib.helpers import get_display_aspect_ratio
 
 
 #region - PREVIEW THUMBS -----------------------------------------------------------------------------------------------
@@ -91,118 +87,4 @@ def extractPreviewThumbs(
     print('Done. Took {:.4f}s'.format((time.time()-start)))
     return image_paths
 
-
-#region - GEN SPRITESHEET ----------------------------------------------------------------------------------------------
-
-def generateVideoSpritesheet(
-        video_path: str,
-        output_dir: str,
-        filestem: str='spritesheet',
-        number_of_frames: int=100,
-        height: int=300,
-        verbose: bool=False,
-    ):
-    """ (OpenCV) For a given video, will generate a spritesheet of seek thumbnails (preview thumbnails) as well as .vtt file. """
-    if not os.path.exists(video_path):
-        raise FileNotFoundError('Video doesnt exist:', video_path)
-    
-    # Create output directory if it doesn't exist
-    os.makedirs(output_dir, exist_ok=True)
-    
-    # Open video file
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        raise IOError(f"Could not open video file: {video_path}")
-    
-    # Get video properties
-    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    duration = frame_count / fps
-    aspect_ratio = get_display_aspect_ratio(video_path)
-    # print('DAR:', aspect_ratio)
-    if aspect_ratio is None:
-        video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        aspect_ratio = video_width / video_height
-    # print('aspect_ratio:', aspect_ratio)
-    
-    # Calculate thumbnail dimensions maintaining aspect ratio
-    thumb_height = height
-    thumb_width = int(thumb_height * aspect_ratio)
-    
-    # Calculate the step between frames to get n evenly spaced frames
-    step = max(1, frame_count // (number_of_frames+1))
-    
-    # Determine optimal grid layout for spritesheet (aim for roughly square)
-    cols = int(math.ceil(math.sqrt(number_of_frames)))
-    rows = int(math.ceil(number_of_frames / cols))
-    
-    # Create blank spritesheet image
-    spritesheet_width = cols * thumb_width
-    spritesheet_height = rows * thumb_height
-    spritesheet = np.zeros((spritesheet_height, spritesheet_width, 3), dtype=np.uint8)
-    
-    # Prepare VTT file content
-    vtt_content = "WEBVTT\n\n"
-    
-    # Extract frames and build spritesheet
-    frame, thumbnail = None, None
-    for i in range(number_of_frames):
-        print('\rextracting frame {}/{}'.format(i+1, number_of_frames), end='')
-        # Calculate frame position and timestamp
-        frame_pos = min((i+1) * step, frame_count - 1)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_pos)
-        ret, frame = cap.read()
-        if not ret:
-            break
-        
-        # Resize frame to thumbnail size
-        thumbnail = cv2.resize(frame, (thumb_width, thumb_height))
-        
-        # Calculate position in spritesheet
-        row = i // cols
-        col = i % cols
-        x = col * thumb_width
-        y = row * thumb_height
-        
-        # Paste thumbnail into spritesheet
-        spritesheet[y:y+thumb_height, x:x+thumb_width] = thumbnail
-        
-        # Calculate timestamps for VTT
-        start_time = i * (duration / number_of_frames)
-        end_time = (i + 1) * (duration / number_of_frames)
-        
-        # Format times as HH:MM:SS.mmm
-        start_time_str = _format_time(start_time)
-        end_time_str = _format_time(end_time)
-        
-        # Add entry to VTT file
-        vtt_content += f"{start_time_str} --> {end_time_str}\n"
-        vtt_content += f"{filestem}.jpg#xywh={x},{y},{thumb_width},{thumb_height}\n\n"
-    print()
-    
-    # Save spritesheet image
-    spritesheet_path = os.path.join(output_dir, f"{filestem}.jpg")
-    cv2.imwrite(spritesheet_path, spritesheet, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
-    
-    # Save VTT file
-    vtt_path = os.path.join(output_dir, f"{filestem}.vtt")
-    with open(vtt_path, 'w') as f:
-        f.write(vtt_content)
-    
-    # Release video capture
-    cap.release()
-    cv2.destroyAllWindows()  # (even if not using windows, just in case)
-    del cap, spritesheet, frame, thumbnail
-    
-    return spritesheet_path, vtt_path
-
-
-
-def _format_time(seconds: float) -> str:
-    """Convert seconds to HH:MM:SS.mmm format for VTT files."""
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    seconds = seconds % 60
-    return f"{hours:02d}:{minutes:02d}:{seconds:06.3f}"
 
