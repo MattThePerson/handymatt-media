@@ -77,7 +77,7 @@ def _extractFrames(cap: cv2.VideoCapture, frames_to_extract: int, total_frames: 
     frames = []
     for i in range(frames_to_extract):
         frame_pos = int((i+0.5) * step)
-        print('\rextracting frame {}/{} [{}/{}]'.format(step, i+1, frames_to_extract, frame_pos, total_frames), end='')
+        print('\rextracting frame {}/{} [{}/{}]'.format(i+1, frames_to_extract, frame_pos, total_frames), end='')
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_pos)
         ret, frame = cap.read()
         if not ret:

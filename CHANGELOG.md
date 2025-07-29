@@ -16,5 +16,5 @@
 ## 0.4.1-0.4.4
 - Fixing bugs
 
-## 0.4.5-0.4.6
+## 0.4.5-0.4.7
 - Fixed misalignment issue with spritesheet gen (seek thumbs)
